@@ -21,7 +21,7 @@ defmodule OtelInstaller.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:igniter, "~> 0.3.76"}
+      {:igniter, "~> 0.4.5"}
     ]
   end
 end

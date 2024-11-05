@@ -58,7 +58,7 @@ defmodule Mix.Tasks.OtelInstaller.Install do
     options = options!(argv)
 
     app_name = Igniter.Project.Application.app_name(igniter) |> dbg()
-    {app_module, _} = Igniter.Project.Application.app_module(igniter) |> dbg()
+    app_module = Igniter.Project.Application.app_module(igniter)
 
     # Do your work here and return an updated igniter
     igniter
@@ -83,5 +83,40 @@ defmodule Mix.Tasks.OtelInstaller.Install do
        [name: System.fetch_env!("HOST")]
        """)}
     )
+    |> install_bridge_libraries()
+  end
+
+  @libraries [
+    :opentelemetry_phoenix
+  ]
+
+  defp install_bridge_libraries(igniter) do
+    Enum.reduce(@libraries, igniter, &install_bridge_library(&2, &1))
+  end
+
+  defp install_bridge_library(igniter, :opentelemetry_phoenix) do
+    # Check if its in the dependencies
+    # If its not, abort
+    # If it is:
+    #   1. Add the bridge library as a dependency
+    #   2. Add any bridge library specific configuration
+
+    if Igniter.Project.Deps.get_dependency_declaration(igniter, :phoenix) do
+      igniter
+      |> Igniter.Project.Deps.add_dep({:opentelemetry_phoenix, "~> 1.2"}, append?: true)
+      |> add_application_start_function_call("OpenTelemetryPhoenix.setup(adapter: :TODO)")
+    else
+      igniter
+    end
+  end
+
+  defp add_application_start_function_call(igniter, code) do
+    app_module = Igniter.Project.Application.app_module(igniter)
+
+    Igniter.Project.Module.find_and_update_module!(igniter, app_module, fn zipper ->
+      with {:ok, zipper} <- Igniter.Code.Function.move_to_def(zipper, :start, 2) do
+        {:ok, Igniter.Code.Common.add_code(zipper, code, placement: :before)}
+      end
+    end)
   end
 end
